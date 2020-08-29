@@ -1,0 +1,12 @@
+# Specify filepatterns you want git to ignore.
+
+/Debug
+/Release
+*.lib
+*.dll
+*.ilk
+*.pdb
+*.exp
+*.mto
+*.aps
+*.exe
