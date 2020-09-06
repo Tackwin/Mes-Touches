@@ -165,7 +165,7 @@ void SettingsWindow::render(Settings& settings) noexcept {
 			reset_down_time_start = 0;
 		}
 		ImGui::SameLine();
-		ImGui::Text("%us", Reset_Down_Reset_Time - dt + 1);
+		ImGui::Text("%zu s", Reset_Down_Reset_Time - dt + 1);
 
 		if (dt > Reset_Down_Reset_Time) {
 			reset_down_time_start = 0;

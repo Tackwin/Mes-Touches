@@ -182,7 +182,7 @@ void EventWindow::render(std::optional<EventState>& state) noexcept {
 		ImGui::SameLine();
 
 		auto time_end = time(nullptr);
-		ImGui::Text("%d", Reset_Button_Time - (time_end - reset_time_start));
+		ImGui::Text("%d", (int)(Reset_Button_Time - (time_end - reset_time_start)));
 		if (time_end - reset_time_start + 1 > Reset_Button_Time) {
 			reset_time_start = 0;
 		}
@@ -204,9 +204,14 @@ void EventWindow::render(std::optional<EventState>& state) noexcept {
 	if (ImGui::Button("Reload")) reload = true;
 	ImGui::SameLine();
 	if (ImGui::Button("Kill hook")) {
-		__declspec(dllimport) bool uninstall_hook();
+		__declspec(dllimport) extern bool uninstall_hook();
 		uninstall_hook();
 	}
+
+	ImGui::Separator();
+	state->cache.dirty |= ImGui::Checkbox("Sort less", &sort_less);
+	ImGui::Separator();
+
 
 	if (state->cache.dirty) {
 		state->cache.doc_to_time.clear();
@@ -219,36 +224,73 @@ void EventWindow::render(std::optional<EventState>& state) noexcept {
 				x.timestamp_end - x.timestamp_start;
 			state->cache.exe_to_docs[x.exe_name].insert(x.doc_name);
 		}
+
+		auto cmp = [&](const auto& a, const auto& b) { return sort_less ? (a < b) : (a > b); };
+
+		state->cache.exe_to_time_sorted.clear();
+		state->cache.exe_to_time_sorted.reserve(state->cache.exe_to_time.size());
+		for (auto& x : state->cache.exe_to_time) {
+			auto& name = x.first;
+			state->cache.exe_to_time_sorted.push_back(name);
+
+			auto& vec = state->cache.exe_to_docs_sorted[name];
+			vec.clear();
+			vec.reserve(state->cache.exe_to_docs[name].size());
+			for (auto& y : state->cache.exe_to_docs[name]) vec.push_back(y);
+			std::sort(
+				std::begin(vec),
+				std::end(vec),
+				[&](auto& a, auto& b) {
+					return cmp(
+						state->cache.doc_to_time[a],
+						state->cache.doc_to_time[b]
+					);
+				}
+			);
+		}
+
+		std::sort(
+			std::begin(state->cache.exe_to_time_sorted),
+			std::end(state->cache.exe_to_time_sorted),
+			[&](auto& a, auto& b) {
+				return cmp(state->cache.exe_to_time[a], state->cache.exe_to_time[b]);
+			}
+		);
+
 		state->cache.dirty = false;
 	}
 
-	ImGui::Separator();
+	ImGui::Text("N %zu", state->apps_usages.size());
 
 	ImGui::Columns(2);
-	for (auto& [name, time] : state->cache.exe_to_time) {
-		bool open = ImGui::TreeNode(name.data(), name.data());
+
+
+
+	for (auto& name : state->cache.exe_to_time_sorted) {
+		bool open = ImGui::TreeNode(name.data(), "%s", name.data());
 
 		ImGui::NextColumn();
 
 		ImGui::Text(
-			"% 9.3lf for % 3zu documents.",
-			time / 1'000'000.0,
-			state->cache.exe_to_docs[name].size()
+			"% 25.3lf for % 3d documents.",
+			state->cache.exe_to_time[name] / 1'000'000.0,
+			(int)state->cache.exe_to_docs[name].size()
 		);
 
 		ImGui::NextColumn();
 
 		if (open) {
 			defer { ImGui::TreePop(); };
-			for (auto& doc : state->cache.exe_to_docs[name]) {
+
+			for (auto& doc : state->cache.exe_to_docs_sorted[name]) {
 				ImGuiTreeNodeFlags flags =
 					ImGuiTreeNodeFlags_Leaf |
 					ImGuiTreeNodeFlags_NoTreePushOnOpen |
 					ImGuiTreeNodeFlags_Bullet;
-				ImGui::TreeNodeEx(doc.data(), flags, doc.data());
+				ImGui::TreeNodeEx(doc.data(), flags, "%s", doc.data());
 				ImGui::NextColumn();
 				ImGui::Text(
-					"% 9.3lf", state->cache.doc_to_time[doc] / 1'000'000.0
+					"% 25.3lf", state->cache.doc_to_time[doc] / 1'000'000.0
 				);
 				ImGui::NextColumn();
 			}

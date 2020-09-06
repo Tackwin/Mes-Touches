@@ -20,9 +20,9 @@ endforeach(OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES)
  
 link_directories(${CMAKE_SOURCE_DIR})
 
-find_package(GLEW REQUIRED)
 
 add_library(win_hook SHARED ${CMAKE_SOURCE_DIR}/src/cbt_hook.cpp)
+find_package(GLEW REQUIRED)
 
 add_executable(Mes_Touches WIN32
 	${CMAKE_SOURCE_DIR}/src/Main.cpp
@@ -52,6 +52,6 @@ add_executable(Mes_Touches WIN32
 )
 
 target_link_libraries(Mes_Touches PUBLIC win_hook)
-target_link_libraries(Mes_Touches PUBLIC version.lib)
 target_link_libraries(Mes_Touches PRIVATE GLEW::GLEW)
+target_link_libraries(Mes_Touches PUBLIC version.lib kernel32.lib)
 set_property(TARGET Mes_Touches PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

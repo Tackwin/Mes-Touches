@@ -37,7 +37,7 @@ void LogWindow::render(Logs& l) noexcept {
 	auto window_width = ImGui::GetWindowContentRegionWidth();
 	ImGui::BeginChild("Text", { window_width / 2, 0 });
 
-	ImGui::Text("Text: %u -----", l.entries.size());
+	ImGui::Text("Text: %zu -----", l.entries.size());
 	ImGui::Columns(2);
 	for (size_t i = l.entries.size() - 1; i + 1 > 0; --i) {
 		ImGui::PushID(i);
@@ -57,7 +57,7 @@ void LogWindow::render(Logs& l) noexcept {
 		}
 
 		line += x.message;
-		ImGui::Text(line.c_str());
+		ImGui::Text("%s", line.c_str());
 		ImGui::NextColumn();
 		if (ImGui::Button("X")) {
 			l.entries.erase(std::begin(l.entries) + i);
@@ -71,14 +71,14 @@ void LogWindow::render(Logs& l) noexcept {
 	
 	ImGui::BeginChild("Error", { window_width / 2, 0 });
 
-	ImGui::Text("Errors: %u -----", l.errors.size());
+	ImGui::Text("Errors: %zu -----", l.errors.size());
 	ImGui::Columns(3);
 	for (size_t i = l.errors.size() - 1; i + 1 > 0; --i) {
 		ImGui::PushID(i);
 		defer{ ImGui::PopID(); };
 
 		auto& x = l.errors[i];
-		ImGui::Text(x.quick_desc.c_str());
+		ImGui::Text("%s", x.quick_desc.c_str());
 		if (ImGui::IsItemHovered()) {
 			ImGui::OpenPopup("Complete");
 		}

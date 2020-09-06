@@ -1,8 +1,9 @@
 #include <Windows.h>
 #include <stdio.h>
 #include <array>
+#include "psapi.h"
 
-constexpr char* Mail_Name = "\\\\.\\Mailslot\\Mes Touches";
+constexpr auto Mail_Name = "\\\\.\\Mailslot\\Mes Touches";
 
 
 __declspec(dllexport)
@@ -23,8 +24,6 @@ LRESULT CALLBACK hook(int n_code, WPARAM w_param, LPARAM l_param) noexcept {
 		switch(n_code) {
 		case HCBT_CREATEWND:
 		case HCBT_DESTROYWND: {
-			if ((HWND)w_param != GetAncestor((HWND)w_param, GA_ROOT))
-				break;
 
 			write_mail(n_code, w_param, l_param);
 			PostMessage(HWND_BROADCAST, msg, 0, 0);
@@ -60,8 +59,57 @@ bool uninstall_hook() {
 	return res;
 }
 
+#if 0
+#include <utility>
+
+CALLBACK BOOL helper(HWND hwnd, LPARAM lParam) {
+	auto pParams = (std::pair<HWND, DWORD>*)(lParam);
+
+	DWORD processId;
+	if (GetWindowThreadProcessId(hwnd, &processId) && processId == pParams->second)
+	{
+		// Stop enumerating
+		SetLastError(-1);
+		pParams->first = hwnd;
+		return FALSE;
+	}
+
+	// Continue enumerating
+	return TRUE;
+}
+
+HWND FindTopWindow(DWORD pid)
+{
+    std::pair<HWND, DWORD> params = { 0, pid };
+
+    // Enumerate the windows using a lambda to process each window
+    BOOL bResult = EnumWindows(helper, (LPARAM)&params);
+
+    if (!bResult && GetLastError() == -1 && params.first)
+    {
+        return params.first;
+    }
+
+    return 0;
+}
+#endif
+
 BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID) {
 	handle_module = module;
+
+#if 0
+	WCHAR wide_buffer[MAX_PATH] = {};
+	DWORD proc_id = GetCurrentProcessId();
+	auto handle_process =
+		OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, proc_id);
+
+	GetModuleFileNameExW(handle_process, NULL, wide_buffer, MAX_PATH);
+	OutputDebugStringW(L"Started A:");
+	OutputDebugStringW(wide_buffer);
+	if (FindTopWindow(proc_id)) GetWindowTextW(FindTopWindow(proc_id), wide_buffer, MAX_PATH);
+	OutputDebugStringW(wide_buffer);
+#endif
+
 	return true;
 }
 

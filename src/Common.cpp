@@ -2,6 +2,7 @@
 
 #include <Windows.h>
 #include <cstring>
+#include <filesystem>
 
 #include "file.hpp"
 const std::filesystem::path App_Data_Dir_Name{ "Mes Touches" };
@@ -98,3 +99,5 @@ void insert_uint8(std::vector<std::byte>& bytes, std::uint8_t x) noexcept {
 	x |= (std::uint8_t)(((std::uint8_t)bytes[offset + 0]) << 0);
 	return x;
 };
+
+

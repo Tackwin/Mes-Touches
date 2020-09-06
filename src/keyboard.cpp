@@ -183,7 +183,7 @@ void KeyboardWindow::render(std::optional<KeyboardState>& state) noexcept {
 		ImGui::SameLine();
 
 		auto time_end = time(nullptr);
-		ImGui::Text("%d", Reset_Button_Time - (time_end - reset_time_start));
+		ImGui::Text("%d", (int)(Reset_Button_Time - (time_end - reset_time_start)));
 		if (time_end - reset_time_start + 1 > Reset_Button_Time) {
 			reset_time_start = 0;
 		}

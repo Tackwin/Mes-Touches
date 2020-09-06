@@ -1,7 +1,7 @@
 // dear imgui: standalone example application for DirectX 9
 // If you are new to dear imgui, see examples/README.txt and documentation at the top of imgui.cpp.
-#define START_WITH_VISU 1
-#define REGISTER_HOOKS 0
+#define START_WITH_VISU 0
+#define REGISTER_HOOKS 1
 #define REGISTER_MOUSE_HOOK 1
 #define REGISTER_EVENT_HOOK 1
 #define REGISTER_KEYBOARD_HOOK 1
@@ -43,7 +43,9 @@
 #include "Screen.hpp"
 #include "Event.hpp"
 
-constexpr char* Mail_Name = "\\\\.\\Mailslot\\Mes Touches";
+#include "psapi.h"
+
+constexpr auto Mail_Name = "\\\\.\\Mailslot\\Mes Touches";
 constexpr auto IDM_EXIT = 100;
 constexpr auto WM_NOTIFY_MSG = WM_APP + 1;
 constexpr auto Quit_Request = WM_APP + 2;
@@ -314,8 +316,8 @@ int __stdcall WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	SetWindowsHookEx(WH_MOUSE_LL, mouse_hook, NULL, NULL);
 #endif
 #if REGISTER_EVENT_HOOK
-	__declspec(dllimport) bool install_hook();
-	__declspec(dllimport) bool uninstall_hook();
+	__declspec(dllimport) extern bool install_hook();
+	__declspec(dllimport) extern bool uninstall_hook();
 
 	Mail_Arrived_Msg = RegisterWindowMessage(Mail_Name);
 	make_mail();
@@ -500,9 +502,17 @@ void window_process() noexcept {
 		ImGui::Text("%f", 1.f / (float)dt);
 		ImGui::End();
 
-		key_window.render(shared.keyboard_state);
-		mou_window.render(shared.mouse_state);
-		eve_window.render(shared.event_state);
+
+		{
+			std::lock_guard guard{ shared.mut_keyboard_state };
+			key_window.render(shared.keyboard_state);
+		} {
+			std::lock_guard guard{ shared.mut_mouse_state };
+			mou_window.render(shared.mouse_state);
+		} {
+			auto t = std::lock_guard{ shared.mut_event_state };
+			eve_window.render(shared.event_state);
+		}
 		set_window.render(shared.settings);
 		log_window.render(logs);
 
@@ -762,6 +772,13 @@ LRESULT CALLBACK event_hook(int n_code, WPARAM w_param, LPARAM l_param) noexcept
 
 	switch(n_code) {
 		case HCBT_CREATEWND:{
+			WCHAR wide_buffer[MAX_PATH] = {};
+			DWORD proc_id = 0;
+			GetWindowThreadProcessId((HWND)w_param, &proc_id);
+			auto handle_process =
+				OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, proc_id);
+
+			GetModuleFileNameExW(handle_process, NULL, wide_buffer, MAX_PATH);
 			opened[(HWND)w_param] = get_microseconds_epoch();
 			break;
 		}
@@ -769,14 +786,15 @@ LRESULT CALLBACK event_hook(int n_code, WPARAM w_param, LPARAM l_param) noexcept
 			if (opened.count((HWND)w_param) == 0) break;
 
 			AppUsage use;
-			use.timestamp_start = opened[(HWND)
-			w_param];
+			use.timestamp_start = opened[(HWND)w_param];
 			use.timestamp_end = get_microseconds_epoch();
 
 			WCHAR wide_buffer[MAX_PATH] = {};
 			GetWindowTextW((HWND)w_param, wide_buffer, MAX_PATH);
 
-			auto size = WideCharToMultiByte(CP_UTF8, 0, wide_buffer, -1, nullptr, 0, NULL, NULL);
+			auto size = WideCharToMultiByte(
+				CP_UTF8, 0, wide_buffer, -1, nullptr, 0, NULL, NULL
+			);
 			if (size == 1) break; // If after that we don't know the name then there is no point to continue.
 
 			use.doc_name = {};
@@ -791,16 +809,17 @@ LRESULT CALLBACK event_hook(int n_code, WPARAM w_param, LPARAM l_param) noexcept
 				NULL
 			);
 
-			memset(wide_buffer, 0, MAX_PATH * sizeof(WCHAR));
-			GetWindowModuleFileNameW((HWND)w_param, wide_buffer, MAX_PATH);
 
-			size = WideCharToMultiByte(CP_UTF8, 0, wide_buffer, -1, nullptr, 0, NULL, NULL);
-			use.exe_name = {};
-			if (size == 1) { // There might be document with no exe attached
-				auto default_string = "Internal";
-				for (size_t i = 0; i < strlen(default_string); ++i)
-					use.exe_name[i] = default_string[i];
-			} else {
+			DWORD proc_id = 0;
+			GetWindowThreadProcessId((HWND)w_param, &proc_id);
+			auto handle_process =
+				OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, proc_id);
+
+			GetModuleFileNameExW(handle_process, NULL, wide_buffer, MAX_PATH);
+			size = WideCharToMultiByte(
+				CP_UTF8, 0, wide_buffer, -1, nullptr, 0, NULL, NULL
+			);
+			if (size > 1) {
 				WideCharToMultiByte(
 					CP_UTF8,
 					0,
@@ -811,9 +830,12 @@ LRESULT CALLBACK event_hook(int n_code, WPARAM w_param, LPARAM l_param) noexcept
 					NULL,
 					NULL
 				);
+			} else {
+				auto default_string = "Internal";
+				for (size_t i = 0; i < strlen(default_string); ++i) {
+					use.exe_name[i] = default_string[i];
+				}
 			}
-
-
 
 			entries_to_add.push_back(use);
 			opened.erase((HWND)w_param);
@@ -1116,7 +1138,7 @@ std::optional<Mail_Message> read_mail() noexcept {
 	);              // no read time-out 
 
 	if (!fResult) {
-	    fprintf(stderr, "GetMailslotInfo failed with %d.\n", GetLastError()); 
+	    fprintf(stderr, "GetMailslotInfo failed with %d.\n", (int)GetLastError()); 
 	    return std::nullopt;
 	}
 
@@ -1137,7 +1159,7 @@ std::optional<Mail_Message> read_mail() noexcept {
 	fResult = ReadFile(shared.mail_slot, lpszBuffer, cbMessage, &cbRead, &ov);
 
 	if (!fResult) {
-	    fprintf(stderr, "ReadFile failed with %d.\n", GetLastError());
+	    fprintf(stderr, "ReadFile failed with %d.\n", (int)GetLastError());
 	    GlobalFree((HGLOBAL) lpszBuffer);
 	    return std::nullopt;
 	}
@@ -1156,7 +1178,7 @@ std::optional<Mail_Message> read_mail() noexcept {
 	);
 
 	if (!fResult) {
-	    fprintf(stderr, "GetMailslotInfo failed (%d)\n", GetLastError());
+	    fprintf(stderr, "GetMailslotInfo failed (%d)\n", (int)GetLastError());
 	    return std::nullopt;
 	}
 

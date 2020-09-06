@@ -1,5 +1,7 @@
 # Specify filepatterns you want git to ignore.
 
+/.vscode
+/Build
 /Debug
 /Release
 *.lib
@@ -10,3 +12,4 @@
 *.mto
 *.aps
 *.exe
+*.manifest

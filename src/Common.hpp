@@ -30,10 +30,10 @@ extern void insert_uint64(std::vector<std::byte>& bytes, std::uint64_t x) noexce
 extern void insert_uint32(std::vector<std::byte>& bytes, std::uint32_t x) noexcept;
 extern void insert_uint16(std::vector<std::byte>& bytes, std::uint16_t x) noexcept;
 extern void insert_uint8(std::vector<std::byte>& bytes, std::uint8_t x) noexcept;
-extern [[nodiscard]] std::uint64_t read_uint64(const std::vector<std::byte>& bytes, size_t offset) noexcept;
-extern [[nodiscard]] std::uint32_t read_uint32(const std::vector<std::byte>& bytes, size_t offset) noexcept;
-extern [[nodiscard]] std::uint16_t read_uint16(const std::vector<std::byte>& bytes, size_t offset) noexcept;
-extern [[nodiscard]] std::uint8_t read_uint8(const std::vector<std::byte>& bytes, size_t offset) noexcept;
+extern std::uint64_t read_uint64(const std::vector<std::byte>& bytes, size_t offset) noexcept;
+extern std::uint32_t read_uint32(const std::vector<std::byte>& bytes, size_t offset) noexcept;
+extern std::uint16_t read_uint16(const std::vector<std::byte>& bytes, size_t offset) noexcept;
+extern std::uint8_t read_uint8(const std::vector<std::byte>& bytes, size_t offset) noexcept;
 
 
 extern std::uint32_t byte_swap(std::uint32_t x) noexcept;

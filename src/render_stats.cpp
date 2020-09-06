@@ -172,7 +172,7 @@ void render_key_list(const KeyboardState& ks) noexcept {
 		}
 
 		ImGui::NextColumn();
-		ImGui::Text(std::to_string(x).c_str());
+		ImGui::Text("%s", std::to_string(x).c_str());
 		ImGui::NextColumn();
 	}
 
@@ -234,7 +234,7 @@ void render_mouse_list(const MouseState& ms) noexcept {
 		}
 
 		ImGui::NextColumn();
-		ImGui::Text(std::to_string(x).c_str());
+		ImGui::Text("%s", std::to_string(x).c_str());
 		ImGui::NextColumn();
 	}
 }
@@ -309,5 +309,5 @@ void render_display_stat(const MouseState& ms, const Display& d) noexcept {
 	auto name = d.unique_hash_char;
 	if (*d.custom_name) name = d.custom_name;
 
-	ImGui::Text("Click entry in %.32s: %u", d.custom_name, it.v);
+	ImGui::Text("Click entry in %.32s: %zu", d.custom_name, it.v);
 }

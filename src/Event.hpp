@@ -27,9 +27,12 @@ constexpr std::uint32_t Event_File_Signature = 'NEVE'; // 'EVEN' byte swapped.
 struct EventCache {
 	bool dirty = true;
 	std::map<AppUsage::Stack_String, uint64_t> exe_to_time;
+	std::vector<AppUsage::Stack_String> exe_to_time_sorted;
 	std::map<AppUsage::Stack_String, uint64_t> doc_to_time;
 	std::map<AppUsage::Stack_String, std::set<AppUsage::Stack_String>>
 		exe_to_docs;
+	std::map<AppUsage::Stack_String, std::vector<AppUsage::Stack_String>>
+		exe_to_docs_sorted;
 };
 
 struct EventState {
@@ -63,6 +66,8 @@ struct EventWindow {
 	bool render_buttons_list_checkbox = false;
 	size_t reset_button_timer = Reset_Button_Time;
 	time_t reset_time_start = 0;
+
+	bool sort_less{ false };
 
 	bool save{ false };
 	bool reset{ false };
