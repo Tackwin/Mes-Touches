@@ -233,6 +233,9 @@ LRESULT WINAPI WndProc_visu(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) n
 	return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
+__declspec(dllimport) extern bool install_hook_64();
+__declspec(dllimport) extern bool uninstall_hook_64();
+
 #ifdef DEBUG_CONSOLE
 int main() {
 #else
@@ -316,13 +319,10 @@ int __stdcall WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	SetWindowsHookEx(WH_MOUSE_LL, mouse_hook, NULL, NULL);
 #endif
 #if REGISTER_EVENT_HOOK
-	__declspec(dllimport) extern bool install_hook();
-	__declspec(dllimport) extern bool uninstall_hook();
-
 	Mail_Arrived_Msg = RegisterWindowMessage(Mail_Name);
 	make_mail();
-	install_hook();
-	defer { uninstall_hook(); };
+	install_hook_64();
+	defer { uninstall_hook_64(); };
 #endif
 #endif
 
@@ -625,6 +625,11 @@ void window_process() noexcept {
 			else ImGui::OpenPopup("Error Prompt");
 			eve_window.reload = false;
 		}
+		if (eve_window.unhook){
+			uninstall_hook_64();
+
+			eve_window.unhook = false;
+		}
 
 		ImGui::End();
 		// Rendering
@@ -795,7 +800,8 @@ LRESULT CALLBACK event_hook(int n_code, WPARAM w_param, LPARAM l_param) noexcept
 			auto size = WideCharToMultiByte(
 				CP_UTF8, 0, wide_buffer, -1, nullptr, 0, NULL, NULL
 			);
-			if (size == 1) break; // If after that we don't know the name then there is no point to continue.
+			// If after that we don't know the name then there is no point to continue.
+			if (size == 1) break;
 
 			use.doc_name = {};
 			WideCharToMultiByte(
@@ -863,13 +869,15 @@ void update_displays_from_click(MouseState& state, ClickEntry x) noexcept;
 void event_queue_process() noexcept {
 	while (shared.hook_window != nullptr) {
 		std::unique_lock lk{ event_queue_cache.mutex };
-		event_queue_cache.wait_var.wait(lk, [] {
+
+		auto test_function = [] {
 			return
 				!event_queue_cache.click.empty() ||
 				!event_queue_cache.display.empty() ||
 				!event_queue_cache.keyboard.empty() ||
 				!event_queue_cache.app_usages.empty();
-		});
+		};
+		event_queue_cache.wait_var.wait(lk, test_function);
 		event_queue_cache.event_received = false;
 
 		if (
@@ -910,6 +918,14 @@ void event_queue_process() noexcept {
 				shared.event_state->register_event(x);
 
 			event_queue_cache.app_usages.clear();
+		}
+
+		// If after one loop we still test positive. That means that we are going to loop and keep
+		// this thread busy but we are supposed to be lightweight !! :'(
+		// So let's just chill for a sec.
+		if (test_function()) {
+			using namespace std::chrono;
+			std::this_thread::sleep_for(1s);
 		}
 	}
 }

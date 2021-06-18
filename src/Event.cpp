@@ -203,10 +203,7 @@ void EventWindow::render(std::optional<EventState>& state) noexcept {
 	ImGui::SameLine();
 	if (ImGui::Button("Reload")) reload = true;
 	ImGui::SameLine();
-	if (ImGui::Button("Kill hook")) {
-		__declspec(dllimport) extern bool uninstall_hook();
-		uninstall_hook();
-	}
+	if (ImGui::Button("Kill hook")) unhook = true;
 
 	ImGui::Separator();
 	state->cache.dirty |= ImGui::Checkbox("Sort less", &sort_less);

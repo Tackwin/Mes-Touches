@@ -73,6 +73,8 @@ struct EventWindow {
 	bool reset{ false };
 	bool strict{ false };
 	bool reload{ false };
+	
+	bool unhook{ false };
 
 	void render(std::optional<EventState>& state) noexcept;
 
